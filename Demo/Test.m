@@ -10,8 +10,8 @@
 #import "Gson.h"
 #import "Student.h"
 #import "ClassRoom.h"
-int main(int argc, const char * argv[]) {
-    @autoreleasepool {
+//基础用法
+void basicUsage(void) {
         //基本对象
         NSString* objectJsonStr=@"{\"studentId\":2,\"studentName\":\"8班2号学生\"}";
         Student * student=[Gson fromJsonStr:objectJsonStr toModel:[Student class]];
@@ -30,7 +30,18 @@ int main(int argc, const char * argv[]) {
 
         //任意对象转json字符串，复杂对象处理和上面一样
         NSLog(@"%@",[Gson toJson:classRooms]);
+}
 
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+//       basicUsage();
+        long beigun=[[NSDate date] timeIntervalSince1970]*1000;
+        for(int i=0;i<10000;i++){
+            NSString* objectWithArrayAndObjectList =@"[{\"roomId\":1,\"roomName\":\"1班\",\"monitor\":{\"studentId\":3,\"studentName\":\"1班3号学生\"},\"students\":[{\"studentId\":1,\"studentName\":\"1班1号学生\"},{\"studentId\":2,\"studentName\":\"1班2号学生\"},{\"studentId\":3,\"studentName\":\"1班3号学生\"}]},{\"roomId\":2,\"roomName\":\"2班\",\"monitor\":{\"studentId\":3,\"studentName\":\"2班3号学生\"},\"students\":[{\"studentId\":1,\"studentName\":\"2班1号学生\"},{\"studentId\":2,\"studentName\":\"2班2号学生\"},{\"studentId\":3,\"studentName\":\"2班3号学生\"}]},{\"roomId\":3,\"roomName\":\"3班\",\"monitor\":{\"studentId\":2,\"studentName\":\"3班2号学生\"},\"students\":[{\"studentId\":1,\"studentName\":\"3班1号学生\"},{\"studentId\":2,\"studentName\":\"3班2号学生\"}]}]";
+            NSArray * classRooms=[Gson fromJsonStr:objectWithArrayAndObjectList toArray:[ClassRoom class]];
+       }
+        long end=[[NSDate date] timeIntervalSince1970]*1000;
+        NSLog(@"%ld",(end-beigun));
         
     }
     return 0;

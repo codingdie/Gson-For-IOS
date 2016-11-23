@@ -8,6 +8,7 @@
 
 #import "Gson.h"
 #import <objc/runtime.h>
+static NSCache*gsonClassCache=nil;
 
 @implementation Gson
 
@@ -30,19 +31,17 @@
             if ([[typeStr lowercaseString] isEqualToString:@"i"]||[[typeStr lowercaseString] isEqualToString:@"s"])
             {
                 int value=[[data valueForKey:propName] intValue];
-                [Gson setProperty:propName withValue:&value for:obj];
+                [obj setValue:@(value) forKey:propName];
                 
             } else if ([[typeStr lowercaseString] isEqualToString:@"l"]||[[typeStr lowercaseString] isEqualToString:@"q"])
             {
                 long value=[[data valueForKey:propName] longValue];
-                [Gson setProperty:propName withValue:&value for:obj];
+                [obj setValue:@(value) forKey:propName];
             }
             else if ([typeStr isEqualToString:@"@\"NSString\""])
             {
                 NSString* value=[data valueForKey:propName] ;
-                
-                [Gson setProperty:propName withObject:value for:obj];
-                
+                [obj setValue:value forKey:propName];
             }
             else if ([typeStr isEqualToString:@"@\"NSMutableArray\""]||[typeStr isEqualToString:@"@\"NSArray\""])            {
                 NSArray *listJson = [data objectForKey:propName];
@@ -59,13 +58,13 @@
                     }
                     
                 }
-                [Gson setProperty:propName withObject:value for:obj];
+                [obj setValue:value forKey:propName];
             }else if([typeStr isEqualToString:@"d"]){
                 double value=[[data valueForKey:propName] doubleValue];
-                [Gson setProperty:propName withValue:&value for:obj];
+                [obj setValue:@(value) forKey:propName];
             }else if ([typeStr isEqualToString:@"f"]){
                 float value=[[data valueForKey:propName] floatValue];
-                [Gson setProperty:propName withValue:&value for:obj];
+                [obj setValue:@(value) forKey:propName];
             }else if([ typeStr rangeOfString:@"@"].location!=NSNotFound){
                 [obj setValue:[Gson fromDictionary:[data valueForKey:propName] toModel:NSClassFromString([typeStr substringWithRange:NSMakeRange(2, typeStr.length-3)])] forKey:propName];
             }     else{
@@ -107,17 +106,13 @@
         
         if ([[typeStr lowercaseString] isEqualToString:@"i"]||[[typeStr lowercaseString] isEqualToString:@"s"])
         {
-            int result = 0;
-            [Gson getValue:&result byPropName:propName from:obj];
-            [jsonDic setObject:@(result) forKey:propName];
+            [jsonDic setObject:[obj valueForKey:propName] forKey:propName];
         }else if ([[typeStr lowercaseString] isEqualToString:@"l"]||[[typeStr lowercaseString] isEqualToString:@"q"]){
-            long result = 0;
-            [Gson getValue:&result byPropName:propName from:obj];
-            [jsonDic setObject:@(result) forKey:propName];
+            [jsonDic setObject:[obj valueForKey:propName] forKey:propName];
         }
         else if ([typeStr isEqualToString:@"@\"NSString\""])
         {
-            NSString *value = [obj performSelector:NSSelectorFromString(propName) withObject:nil];
+            NSString *value = [obj valueForKey:propName];
             if(value!=nil){
                 [jsonDic setObject:value forKey:propName];
             }
@@ -139,13 +134,9 @@
             }
             [jsonDic setObject:jsonValue forKey:propName];
         }else if([typeStr isEqualToString:@"d"]){
-            double result = 0;
-            [Gson getValue:&result byPropName:propName from:obj];
-            [jsonDic setObject:@(result) forKey:propName];
+            [jsonDic setObject:[obj valueForKey:propName] forKey:propName];
         }else if ([typeStr isEqualToString:@"f"]){
-            float result = 0;
-            [Gson getValue:&result byPropName:propName from:obj];
-            [jsonDic setObject:@(result) forKey:propName];
+            [jsonDic setObject:[obj valueForKey:propName] forKey:propName];
         }else if([ typeStr rangeOfString:@"@"].location!=NSNotFound){
             [jsonDic setObject:[Gson toDictionary:[obj valueForKey:propName]] forKey:propName];
         }else{
@@ -164,33 +155,6 @@
     return dicArray;
 }
 
-+(void)getValue:(void*) value byPropName:(NSString*)propName from:(id) obj{
-    SEL selector = NSSelectorFromString(propName);
-    NSMethodSignature *signature = [[obj class] instanceMethodSignatureForSelector:selector];
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    [invocation setTarget:obj];
-    [invocation setSelector:selector];
-    [invocation invoke];
-    [invocation getReturnValue:value];
-}
-
-+ (void)setProperty:(NSString*)propertyName withValue:(void*)value for:(id)obj
-{
-    NSString *setterName = [NSString stringWithFormat:@"set%@%@:", [propertyName substringToIndex:1].uppercaseString, [propertyName substringFromIndex:1]];
-    SEL selector = NSSelectorFromString(setterName);
-    NSMethodSignature *signature = [[obj class] instanceMethodSignatureForSelector:selector];
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    [invocation setTarget:obj];
-    [invocation setSelector:selector];
-    [invocation setArgument:value atIndex:2];
-    [invocation invoke];
-}
-
-+ (void)setProperty:(NSString*)propName withObject:(id)value for:(id)obj
-{
-    NSString *setterName = [NSString stringWithFormat:@"set%@%@:", [propName substringToIndex:1].uppercaseString, [propName substringFromIndex:1]];
-    [obj performSelector:NSSelectorFromString(setterName) withObject:value];
-}
 
 +(NSData*)toJsonData:(id) obj{
     if (!obj) {
@@ -228,7 +192,15 @@
     return nil;
 }
 
-+(NSMutableArray* )getAllProperty:(Class) cla{
++(NSArray* )getAllProperty:(Class) cla{
+    if(gsonClassCache==nil){
+        gsonClassCache=[[NSCache alloc] init];
+        gsonClassCache.countLimit=150;
+    }
+    NSArray * cache=[gsonClassCache objectForKey:cla];
+    if(cache!=nil){
+        return  cache;
+    }
     NSString* className= [NSString stringWithUTF8String:class_getName(cla)];
     if ([className isEqualToString:@"NSObject"]) {
         return [NSMutableArray array];
@@ -252,6 +224,8 @@
     if ([cla superclass]!=nil) {
         [arry addObjectsFromArray:[Gson getAllProperty:[cla superclass]]]  ;
     }
+    [gsonClassCache setObject:arry forKey:cla];
+
     return arry;
 }
 

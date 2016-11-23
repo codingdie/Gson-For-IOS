@@ -7,7 +7,6 @@
 //
 
 #import <Foundation/Foundation.h>
-
 @interface Gson : NSObject
 
 + (id)fromJsonStr:(NSString *)content toModel:(Class)modelClass;
@@ -16,24 +15,19 @@
 
 + (id)fromDictionary:(NSDictionary*)data toModel:(Class)cla;
 
++ (NSString*)toJson:(id)obj;
+
++ (NSData*)toJsonData:(id)obj;
+
 + (NSArray*)fromDictionaryArray:(NSArray*)data toModelArray:(Class)cla;
 
 + (NSDictionary*)toDictionary:(id)obj;
 
 + (NSArray*)toDictionaryArray:(NSArray*)objArray;
 
-+ (NSData*)toJsonData:(id)obj;
-
-+ (NSString*)toJson:(id)obj;
 
 
 + (NSMutableArray* )getAllProperty:(Class) cla;
-
-+ (void)getValue:(void*) value byPropName:(NSString*)propName from:(id) obj;
-
-+ (void)setProperty:(NSString*)propertyName withValue:(void*)value for:(id)obj;
-
-+ (void)setProperty:(NSString*)propName withObject:(id)value for:(id)obj;
 
 
 @end
