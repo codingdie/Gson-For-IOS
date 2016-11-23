@@ -8,11 +8,10 @@
 
 #import "Gson.h"
 #import <objc/runtime.h>
-#import "GsonProperty.h"
 
 @implementation Gson
 
-+(id)fromJsonObject:(NSDictionary*)data toClass:(Class)cla{
++(id)fromDictionary:(NSDictionary*)data toModel:(Class)cla{
     
     if (![data isKindOfClass:[NSDictionary class]]) {
         return nil;
@@ -20,13 +19,14 @@
     
     id obj= [cla new];
     NSMutableArray*arry=[Gson getAllProperty:cla];
-    for (GsonProperty *prop in arry)
+    for (NSDictionary *prop in arry)
     {
-        NSString* propName=prop.name;
+        NSString* propName=prop[@"name"];
         
         if ([data objectForKey:propName] != nil)
         {
-            NSString *typeStr =prop.type;
+            NSString *typeStr =prop[@"type"];
+
             if ([[typeStr lowercaseString] isEqualToString:@"i"]||[[typeStr lowercaseString] isEqualToString:@"s"])
             {
                 int value=[[data valueForKey:propName] intValue];
@@ -55,7 +55,7 @@
                         [value addObject:itemJson];
                     } else{
                         Class class = [obj performSelector:NSSelectorFromString([propName stringByAppendingString:@"Class"]) withObject:nil];
-                        [value addObject:[Gson fromJsonObject:itemJson toClass:class]];
+                        [value addObject:[Gson fromDictionary:itemJson toModel:class]];
                     }
                     
                 }
@@ -67,7 +67,7 @@
                 float value=[[data valueForKey:propName] floatValue];
                 [Gson setProperty:propName withValue:&value for:obj];
             }else if([ typeStr rangeOfString:@"@"].location!=NSNotFound){
-                [obj setValue:[Gson fromJsonObject:[data valueForKey:propName] toClass:NSClassFromString([typeStr substringWithRange:NSMakeRange(2, typeStr.length-3)])] forKey:propName];
+                [obj setValue:[Gson fromDictionary:[data valueForKey:propName] toModel:NSClassFromString([typeStr substringWithRange:NSMakeRange(2, typeStr.length-3)])] forKey:propName];
             }     else{
                 NSLog(@"不识别 propName:%@/typeStr:%@",propName,typeStr);
             }
@@ -75,7 +75,7 @@
     }
     return obj;
 }
-+(NSMutableArray*)fromJsonArray:(NSArray*)data toClass:(Class)cla{
++(NSMutableArray*)fromDictionaryArray:(NSArray*)data toModelArray:(Class)cla{
     
     if (![data isKindOfClass:[NSArray class]]) {
         return nil;
@@ -84,7 +84,7 @@
     NSMutableArray* arry=[NSMutableArray array];
     for (id obj in data) {
         if ([obj isKindOfClass:[NSDictionary class]]) {
-            [arry addObject:[Gson fromJsonObject:obj toClass:cla]];
+            [arry addObject:[Gson fromDictionary:obj toModel:cla]];
         }else if ([obj isKindOfClass:[NSNumber class]]) {
             [arry addObject:obj];
         }
@@ -92,18 +92,18 @@
     return arry;
 }
 
-+(NSDictionary*)toJson:(id) obj;
++(NSDictionary*)toDictionary:(id) obj;
 {
     if (obj==nil) {
-        return [NSNull null];
+        return nil;
     }
     NSMutableArray*arry=[Gson getAllProperty:[obj class]];
     NSMutableDictionary *jsonDic = [NSMutableDictionary dictionaryWithCapacity:[arry count]];
     
-    for (GsonProperty*prop in arry)
+    for (NSDictionary*prop in arry)
     {
-        NSString *propName = prop.name;
-        NSString *typeStr = prop.type;
+        NSString *propName = prop[@"name"];
+        NSString *typeStr = prop[@"type"];
         
         if ([[typeStr lowercaseString] isEqualToString:@"i"]||[[typeStr lowercaseString] isEqualToString:@"s"])
         {
@@ -134,7 +134,7 @@
                 } else if([item isKindOfClass:[NSNumber class]]){
                     [jsonValue addObject:item];
                 }else {
-                    [jsonValue addObject:[Gson toJson:item]];
+                    [jsonValue addObject:[Gson toDictionary:item]];
                 }
             }
             [jsonDic setObject:jsonValue forKey:propName];
@@ -147,13 +147,21 @@
             [Gson getValue:&result byPropName:propName from:obj];
             [jsonDic setObject:@(result) forKey:propName];
         }else if([ typeStr rangeOfString:@"@"].location!=NSNotFound){
-            [jsonDic setObject:[Gson toJson:[obj valueForKey:propName]] forKey:propName];
+            [jsonDic setObject:[Gson toDictionary:[obj valueForKey:propName]] forKey:propName];
         }else{
             NSLog(@"不识别 propName:%@/typeStr:%@",propName,typeStr);
         }
     }
     
     return jsonDic;
+}
+
++ (NSArray*)toDictionaryArray:(NSArray*)objArray{
+    NSMutableArray *dicArray=[[NSMutableArray alloc] init];
+    for(id obj in objArray){
+        [dicArray addObject:[Gson toDictionary:obj]];
+    }
+    return dicArray;
 }
 
 +(void)getValue:(void*) value byPropName:(NSString*)propName from:(id) obj{
@@ -188,17 +196,22 @@
     if (!obj) {
         return nil;
     }
-    
-    NSDictionary*jsondic=nil;
-    if ([obj isKindOfClass:[NSDictionary class]]||[obj isKindOfClass:[NSMutableDictionary class]]) {
-        jsondic=obj;
-    }else{
-        jsondic=[Gson toJson:obj];
-    }
+    NSData *jsonData = nil;
     NSError *error = nil;
-    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:jsondic
-                                                       options:0
-                                                         error:&error];
+    if ([obj isKindOfClass:[NSDictionary class]]||[obj isKindOfClass:[NSMutableDictionary class]]) {
+        jsonData = [NSJSONSerialization dataWithJSONObject:obj options:0  error:&error];
+    } else if ([obj isKindOfClass:[NSArray class]]||[obj isKindOfClass:[NSMutableArray class]]) {
+        NSMutableArray *jsonArray = [NSMutableArray array];
+        for (id childObj in obj) {
+            NSDictionary *jsondic = [Gson toDictionary:childObj];
+            [jsonArray addObject:jsondic];
+        }
+        jsonData = [NSJSONSerialization dataWithJSONObject:jsonArray options:0  error:&error];
+    } else {
+       NSDictionary *jsondic=[Gson toDictionary:obj];
+        jsonData = [NSJSONSerialization dataWithJSONObject:jsondic options:0  error:&error];
+    }
+    
     if (error == nil){
         return jsonData;
     }else{
@@ -206,7 +219,7 @@
     }
 }
 
-+(NSString *)toJsonString:(id)obj
++(NSString *)toJson:(id)obj
 {
     NSData *data = [Gson toJsonData:obj];
     if (data) {
@@ -228,9 +241,11 @@
         char *typeValue = property_copyAttributeValue(props[i], "T");
         NSString *typeStr = [NSString stringWithUTF8String:typeValue];
         free(typeValue);
-        GsonProperty*pro = [[GsonProperty alloc]init];
-        pro.name=propName;
-        pro.type=typeStr;
+        NSDictionary *pro = [NSDictionary dictionaryWithObjectsAndKeys:
+                              propName, @"name",
+                            typeStr, @"type",
+                              nil];
+ 
         [arry addObject:pro];
     }
     free(props);
@@ -240,7 +255,7 @@
     return arry;
 }
 
-+ (id)fromJsonString:(NSString *)content toModel:(Class)modelClass
++ (id)fromJsonStr:(NSString *)content toModel:(Class)modelClass
 {
     NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding];
     if (!data)
@@ -248,12 +263,43 @@
         return nil;
     }
     NSError *error;
-    NSDictionary *messageDict = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+    id message = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
     if (error) {
         return nil;
     }
-    return [Gson fromJsonObject:messageDict toClass:modelClass];
+    if ([message isKindOfClass:[NSDictionary class]] || [message isKindOfClass:[NSMutableDictionary class]]) {
+        return [Gson fromDictionary:message toModel:modelClass];
+    } else if ([message isKindOfClass:[NSArray class]] || [message isKindOfClass:[NSMutableArray class]]) {
+        NSLog(@"error:not a jsonObject,is jsonArray");
+
+        return nil;
+    }
+    return nil;
 }
 
-
++ (id)fromJsonStr:(NSString *)content toArray:(Class)modelClass
+{
+    NSData *data = [content dataUsingEncoding:NSUTF8StringEncoding];
+    if (!data)
+    {
+        return nil;
+    }
+    NSError *error;
+    id message = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+    if (error) {
+        return nil;
+    }
+    if ([message isKindOfClass:[NSDictionary class]] || [message isKindOfClass:[NSMutableDictionary class]]) {
+        NSLog(@"error:not a jsonArray ,is jsonObject");
+        return nil;
+    } else if ([message isKindOfClass:[NSArray class]] || [message isKindOfClass:[NSMutableArray class]]) {
+        NSMutableArray *modelClassList = [NSMutableArray array];
+        for (id obj in message) {
+            id model = [Gson fromDictionary:obj toModel:modelClass];
+            [modelClassList addObject:model];
+        }
+        return modelClassList;
+    }
+    return nil;
+}
 @end
