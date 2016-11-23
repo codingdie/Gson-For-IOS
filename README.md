@@ -24,8 +24,20 @@ Gson coded by OC
 //属性名字+数组里面对象的Class
 -(Class)studentsClass;
 @end
+@implementation ClassRoom
+- (Class)studentsClass{
+    return [Student class];
+}
+
+
+@interface Student : NSObject
+@property (nonatomic, assign) long  studentId;
+@property (nonatomic, copy) NSString * studentName;
+@end
+
+
 ```
-`  
+```
 
         //基本对象
         NSString* objectJsonStr=@"{\"studentId\":2,\"studentName\":\"8班2号学生\"}";
@@ -45,4 +57,4 @@ Gson coded by OC
 
         //任意对象转json字符串，复杂对象处理和上面一样
         NSLog(@"%@",[Gson toJson:classRooms]);
-`
+```
