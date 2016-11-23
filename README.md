@@ -12,11 +12,9 @@ Gson coded by OC
 + (NSString*)toJson:(id)obj;
 
 + (NSData*)toJsonData:(id)obj;
-
-
-
- `          
-        @class Student;
+`  
+         
+         @class Student;
 @interface ClassRoom : NSObject
 @property (nonatomic, assign) long  roomId;
 
@@ -31,9 +29,11 @@ Gson coded by OC
 @interface Student : NSObject
 @property (nonatomic, assign) long  studentId;
 @property (nonatomic, copy) NSString * studentName;
-@end
+@end 
 `
-`
+
+`  
+
         //基本对象
         NSString* objectJsonStr=@"{\"studentId\":2,\"studentName\":\"8班2号学生\"}";
         Student * student=[Gson fromJsonStr:objectJsonStr toModel:[Student class]];
