@@ -12,9 +12,10 @@ Gson coded by OC
 + (NSString*)toJson:(id)obj;
 
 + (NSData*)toJsonData:(id)obj;
-`  
-         
-         @class Student;
+`
+#import <Foundation/Foundation.h>
+
+@class Student;
 @interface ClassRoom : NSObject
 @property (nonatomic, assign) long  roomId;
 
@@ -22,16 +23,10 @@ Gson coded by OC
 @property (nonatomic, strong) NSMutableArray*  students;
 @property (nonatomic, strong) Student*  monitor;
 
-//数组属性加个方法：方法名为属性名字+数组里面对象的Class
+//属性名字+数组里面对象的Class
 -(Class)studentsClass;
-@end
-
-@interface Student : NSObject
-@property (nonatomic, assign) long  studentId;
-@property (nonatomic, copy) NSString * studentName;
-@end 
+@end  
 `
-
 `  
 
         //基本对象
